@@ -1,6 +1,7 @@
 local QBCore = GetResourceState('qb-core') == 'started' and exports['qb-core']:GetCoreObject()
 local ESX = GetResourceState('es_extended') == 'started' and exports.es_extended:getSharedObject()
 
+
 local function PlayerName(src)
     if QBCore then 
         local Player = QBCore.Functions.GetPlayer(src)
@@ -18,6 +19,46 @@ local function PlayerName(src)
         return first..' '..last
     end
 end
+
+RegisterNetEvent('solos-rentals:server:checkLicense', function(locationKey, licenseType)
+    local src = source
+    local xPlayer = ESX and ESX.GetPlayerFromId(src) or QBCore and QBCore.Functions.GetPlayer(src)
+    local hasLicense = false
+
+    if xPlayer then
+        if ESX then
+            -- Fetch licenses directly from the database
+            local identifier = xPlayer.getIdentifier()
+            local result = MySQL.Sync.fetchAll('SELECT type FROM user_licenses WHERE owner = @owner', {
+                ['@owner'] = identifier
+            })
+
+            -- Check if player has the required license
+            for _, license in pairs(result) do
+                if license.type == licenseType then
+                    hasLicense = true
+                    break
+                end
+            end
+        elseif QBCore then
+            -- Check if player has the required item (licenseType)
+            hasLicense = xPlayer.Functions.HasItem(licenseType)
+        end
+    else
+        print("Player not found with source: " .. src)
+    end
+
+    -- Notify the player and trigger appropriate client event
+    if hasLicense then
+        TriggerClientEvent('solos-rentals:client:rentVehicle', src, locationKey)
+    else
+        TriggerClientEvent('ox_lib:notify', src, {
+            type = 'error',
+            description = "You don't have a valid License!",
+            duration = 5000
+        })
+    end
+end)
 
 RegisterNetEvent('solos-rentals:server:RentVehicle', function(vehicle, plate)
     local src = source
@@ -77,4 +118,25 @@ RegisterNetEvent('solos-rentals:server:MoneyAmounts', function(vehiclename, pric
         iconColor = 'white'
     })
     TriggerClientEvent('solos-rentals:client:SpawnVehicle', src, vehiclename, location)
+
+end)
+
+RegisterNetEvent('solos-rentals:server:removeRentalPapers', function()
+    local src = source
+    local xPlayer = ESX.GetPlayerFromId(src) or QBCore.Functions.GetPlayer(src)
+
+    if xPlayer then
+        if ESX then
+            xPlayer.removeInventoryItem('rentalpapers', 1) -- Replace 'rental_papers' with your actual item name
+        elseif QBCore then
+            xPlayer.Functions.RemoveItem('rentalpapers', 1) -- Replace 'rental_papers' with your actual item name
+        end
+
+        -- Notify the player
+        TriggerClientEvent('ox_lib:notify', src, {
+            type = 'success',
+            description = 'Rental papers have been removed from your inventory.',
+            duration = 5000 -- 5 seconds
+        })
+    end
 end)
