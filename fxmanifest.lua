@@ -19,6 +19,11 @@ server_script {
     'server.lua'
 }
 
+-- Include HTML UI files and images
+files {
+    'html/images/*',
+}
+
 escrow_ignore {
     'config.lua',
     'client.lua',
