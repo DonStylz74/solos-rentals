@@ -25,7 +25,10 @@ RegisterNetEvent('solos-rentals:server:checkLicense', function(locationKey, lice
     local xPlayer = ESX and ESX.GetPlayerFromId(src) or QBCore and QBCore.Functions.GetPlayer(src)
     local hasLicense = false
 
-    if xPlayer then
+    -- If licenseType is "None" or nil, no license check is needed
+    if licenseType == nil or licenseType == "none" then
+        hasLicense = true
+    elseif xPlayer then
         if ESX then
             -- Fetch licenses directly from the database
             local identifier = xPlayer.getIdentifier()
